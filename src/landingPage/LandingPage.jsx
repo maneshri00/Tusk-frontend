@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import WelcomeTest from "./WelcomeTest";
 import glow from "./glow.png";
 import glow1 from "./glow2.png";
@@ -11,9 +11,11 @@ import digital2 from "./support247.png";
 import digital3 from "./confused.png";
 import { useNavigate } from "react-router-dom";
 import graph from "./graph.png";
+import { fetchUserStatus } from "../services/api.js";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [status, setStatus] = useState(null);
 
   // Animation controls for strict sequencing
   const digital3Controls = useAnimationControls();
@@ -43,6 +45,17 @@ const LandingPage = () => {
     };
 
     runSequence();
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const s = await fetchUserStatus();
+      if (!cancelled) {
+        window.__status = s;
+        setStatus(s);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -159,14 +172,32 @@ const LandingPage = () => {
             and turn daily goals into consistent progress.
           </div>
 
-          <button
-            onClick={() => {
-  window.location.href = "http://localhost:8080/auth/google";
-}}
-            className="mt-12 bg-[#1E90FF] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#F5F5F5] hover:text-black transition-colors"
-          >
-            Get Started
-          </button>
+          <div className="mt-12 flex gap-6">
+            <button
+              onClick={() => {
+                try { localStorage.setItem("workspacePreferred", "personal"); } catch {}
+                navigate("/continue?workspace=personal");
+              }}
+              className="
+                bg-sky-600 text-white px-6 py-3 rounded-lg font-semibold
+                hover:bg-sky-500 transition-colors
+              "
+            >
+              Explore Personal
+            </button>
+            <button
+              onClick={() => {
+                try { localStorage.setItem("workspacePreferred", "professional"); } catch {}
+                navigate("/continue?workspace=professional");
+              }}
+              className="
+                bg-emerald-600 text-white px-6 py-3 rounded-lg font-semibold
+                hover:bg-emerald-500 transition-colors
+              "
+            >
+              Explore Professional
+            </button>
+          </div>
         </div>
       </div>
 

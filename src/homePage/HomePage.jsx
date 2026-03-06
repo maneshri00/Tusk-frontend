@@ -6,10 +6,12 @@ import { useNavigate } from "react-router-dom";
 import NeonProgress from "./NeonProgress";
 import LineChart from "./ProgressLineChart";
 import CompletedTask from "../CompletedTaskPage/CompletedTask";
+import { fetchUserStatus } from "../services/api.js";
 
 const HomePage = ({ tasks, setTasks }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [workspace, setWorkspace] = useState("personal");
 
   const navigate = useNavigate();
   const completedCount = tasks.filter((t) => t.status === "DONE").length;
@@ -22,16 +24,29 @@ const HomePage = ({ tasks, setTasks }) => {
  const notificationIntervalRef = useRef(null);
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8080/tasks/priority")
-      .then((res) => {
-        setTasks(res.data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to load tasks");
-        setLoading(false);
-      });
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await fetchUserStatus();
+        const ws =
+          status.workspaceAllowed ||
+          (typeof localStorage !== "undefined" && localStorage.getItem("workspacePreferred")) ||
+          "personal";
+        if (!cancelled) setWorkspace(ws);
+        const url = `http://localhost:8080/tasks/priority?workspace=${ws}`;
+        const res = await axios.get(url, { withCredentials: true });
+        if (!cancelled) {
+          setTasks(res.data);
+          setLoading(false);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError("Failed to load tasks");
+          setLoading(false);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
   useEffect(() => {
   if (Notification.permission !== "granted") return;
@@ -98,8 +113,8 @@ useEffect(() => {
 
  
     axios
-      .put(`http://localhost:8080/tasks/${id}/complete`)
-      .then(() => axios.get("http://localhost:8080/tasks/priority"))
+      .put(`http://localhost:8080/tasks/${id}/complete?workspace=${workspace}`, null, { withCredentials: true })
+      .then(() => axios.get(`http://localhost:8080/tasks/priority?workspace=${workspace}`, { withCredentials: true }))
       .then((res) => {
         setTasks(res.data);
       })
